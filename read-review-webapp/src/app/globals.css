@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+:root {
+  /* Base colors - light mode */
+  --background: #ffffff;
+  --background-secondary: #f2f2f7;
+  --background-tertiary: #ffffff;
+  --foreground: #000000;
+  --foreground-secondary: #6d6d70;
+  --foreground-tertiary: #8e8e93;
+  
+  /* Semantic colors */
+  --accent: #5856d6; /* indigo */
+  --info: #007aff; /* blue */
+  --warn: #ff9500; /* orange */
+  --success: #34c759; /* green */
+  --muted: #8e8e93; /* gray */
+  
+  /* Shadows */
+  --shadow-card: 0 6px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Dark mode colors */
+.dark {
+  --background: #000000;
+  --background-secondary: #1c1c1e;
+  --background-tertiary: #2c2c2e;
+  --foreground: #ffffff;
+  --foreground-secondary: #aeaeb2;
+  --foreground-tertiary: #8e8e93;
+  
+  /* Semantic colors - adjusted for dark mode */
+  --accent: #5e5ce6; /* slightly brighter indigo */
+  --info: #0a84ff; /* brighter blue */
+  --warn: #ff9f0a; /* brighter orange */
+  --success: #30d158; /* brighter green */
+  --muted: #8e8e93; /* gray stays the same */
+  
+  /* Shadows - darker for dark mode */
+  --shadow-card: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+@theme inline {
+  /* Colors */
+  --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
+  --color-background-tertiary: var(--background-tertiary);
+  --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-tertiary: var(--foreground-tertiary);
+  
+  --color-accent: var(--accent);
+  --color-info: var(--info);
+  --color-warn: var(--warn);
+  --color-success: var(--success);
+  --color-muted: var(--muted);
+  
+  /* Status colors */
+  --color-inbox: var(--info);
+  --color-later: var(--warn);
+  --color-shortlist: var(--accent);
+  --color-archived: var(--muted);
+  
+  /* Spacing - 4pt base grid */
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-s: 12px;
+  --space-m: 16px;
+  --space-l: 20px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+  
+  /* Border radius */
+  --radius-chip: 12px;
+  --radius-card: 16px;
+  
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", monospace;
+  
+  /* Reading typography */
+  --font-size-reading-min: 16px;
+  --font-size-reading-default: 18px;
+  --font-size-reading-max: 24px;
+  --line-height-reading: 1.6;
+  --max-width-reader: 720px;
+  
+  /* Shadows */
+  --shadow-card: var(--shadow-card);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #000000;
+    --background-secondary: #1c1c1e;
+    --background-tertiary: #2c2c2e;
+    --foreground: #ffffff;
+    --foreground-secondary: #ebebf5;
+    --foreground-tertiary: #8e8e93;
+    
+    /* Semantic colors for dark mode */
+    --accent: #5e5ce6; /* indigo */
+    --info: #0a84ff; /* blue */
+    --warn: #ff9f0a; /* orange */
+    --success: #30d158; /* green */
+    --muted: #8e8e93; /* gray */
+    
+    /* Adjust shadow for dark mode */
+    --shadow-card: 0 6px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

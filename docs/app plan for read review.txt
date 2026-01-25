@@ -1,0 +1,338 @@
+Read/Review App Plan
+
+# SwiftUI Component Inventory — Read/Review v1
+
+> Implementation‑ready design system + component specs for the Read/Review app.
+
+---
+
+## 1) Purpose & Scope
+
+This document defines design tokens (spacing, type, color), layout rules, and production‑ready component specs (API, states, interactions) for SwiftUI. Keep parity across iPad portrait/landscape. All components support light/dark mode and Dynamic Type.
+
+---
+
+## 2) Design Tokens
+
+### 2.1 Spacing & Grid
+
+* **Base grid:** 4pt.
+* **Primary increments:** 4, 8, 12, 16, 20, 24, 32.
+* **List row vertical padding:** 6 (top/bottom) → row ≈ 72pt.
+* **Container gutters:** 16 (phone), 24 (iPad), **content max‑width**: 720pt for reader body.
+
+### 2.2 Corners & Radii
+
+* **Card radius:** 16
+* **Chip radius:** 12 (capsule preferred)
+* **Popover/sheet radius:** System default
+
+### 2.3 Elevation & Materials
+
+* **Surface:** `.regularMaterial` for cards in Review Mode
+* **Bars/Toolbars:** `.bar` background
+* **Shadows:** rgba(0,0,0,0.06), radius 12, y:6 for floating cards
+
+### 2.4 Typography
+
+* **Display/Screen title:** `.largeTitle`
+* **Section title:** `.title3.weight(.semibold)`
+* **Row title:** `.headline`
+* **Meta/Domain:** `.subheadline` (secondary)
+* **Body (reader):** custom token `ReadingBody` (min 16pt, default 18pt, max 24pt)
+* **Chip text:** `.footnote.weight(.semibold)`
+* **Tag text:** `.caption`
+
+### 2.5 Color (Semantic)
+
+Use semantic tokens over hardcoded hues. Backed by Asset Catalog variants (Light/Dark, high contrast) with system fallbacks.
+
+* `rr/background` → systemBackground
+* `rr/backgroundSecondary` → secondarySystemBackground
+* `rr/backgroundTertiary` → tertiarySystemBackground
+* `rr/accent` → indigo
+* `rr/info` → blue
+* `rr/warn` → orange
+* `rr/success` → green
+* `rr/muted` → gray
+* **Status mapping:**
+
+  * Inbox → `rr/info`
+  * Later → `rr/warn`
+  * Shortlist → `rr/accent`
+  * Archived → `rr/muted`
+
+**Contrast targets:** WCAG AA 4.5:1 for text; chips use 15% fill of status color with full‑color text.
+
+### 2.6 Iconography
+
+* **SF Symbols:**
+
+  * Source: url → `safari`, pdf → `doc.richtext`, email → `envelope`
+  * Status: inbox `tray`, later `clock`, shortlist `star`, archived `archivebox`
+  * Meta: search `magnifyingglass`, offline `antenna.radiowaves.left.and.right.slash`
+
+---
+
+## 3) Layout Patterns
+
+### 3.1 NavigationSplitView (iPad landscape)
+
+* **Sidebar width:** system default; collapse allowed.
+* **Content list:** inset list, searchable.
+* **Detail:** Reader container or placeholder.
+
+### 3.2 Stacked Navigation (portrait)
+
+* Toolbar: title, search, quick‑add `+`.
+* Edge‑swipe back enabled from Reader.
+
+### 3.3 Reader
+
+* Content max width 720pt centered; generous line height (≥ 6pt).
+* Footer toolbar with font stepper, export, archive, open original.
+
+### 3.4 Review Mode
+
+* Single card centered with soft elevation.
+* Bottom action bar (Skip, Later, Complete, Archive). Large hit targets (≥ 44pt).
+
+---
+
+## 4) Components
+
+For each component: **Purpose**, **Anatomy**, **States**, **Interactions**, **API** (props), **Do/Don’t**.
+
+### 4.1 StatusChip
+
+* **Purpose:** Show and change the item’s status.
+* **Anatomy:** Capsule background (15% status tint), label text.
+* **States:** default, hover (mac), pressed, disabled.
+* **Interactions:** Tap → menu of statuses + archive.
+* **API:** `status: ItemStatus`
+* **Do:** Keep text short; **Don’t:** encode additional state (tags/time) into chip.
+
+### 4.2 TimeChip
+
+* **Purpose:** Display estimated minutes.
+* **Anatomy:** Capsule, clock icon, minutes.
+* **API:** `minutes: Int?`
+
+### 4.3 TagPill
+
+* **Purpose:** Lightweight tag indicator.
+* **Anatomy:** Capsule, `#name`.
+* **API:** `name: String`
+
+### 4.4 SourceIcon
+
+* **Purpose:** Visual hint of content kind.
+* **API:** `kind: ItemKind`
+
+### 4.5 ItemRow
+
+* **Purpose:** Primary list cell for Inbox/Later/Shortlist.
+* **Anatomy:** SourceIcon, Title, StatusChip, Meta line (domain, offline, time), Tags.
+* **States:** normal, selected, swiping.
+* **Gestures:** Swipe **→ Later**, **→→ Shortlist**, **← Archive** (map to leading/trailing swipe actions in SwiftUI).
+* **API:** `item: Item`
+
+### 4.6 QuickAddBar
+
+* **Purpose:** Fast capture via text/paste.
+* **Anatomy:** `+` icon, text field, Add button.
+* **Behavior:** Clipboard nudge once per session if URL/PDF detected.
+* **API:** `onAdd: (String) -> Void`
+
+### 4.7 ReaderHeader
+
+* **Purpose:** Context bar for an item.
+* **Anatomy:** Title, domain/offline labels, StatusChip menu.
+* **Actions:** Change status, archive in menu.
+
+### 4.8 ReaderToolbar
+
+* **Purpose:** Reading controls.
+* **Anatomy:** Text size stepper, Export, Archive, Open Original.
+* **API:** `fontSize: Binding<CGFloat>`, callbacks.
+
+### 4.9 ArticleReaderView
+
+* **Purpose:** Readability‑style text view.
+* **Anatomy:** ScrollView → VStack (constrained width).
+* **Future hooks:** highlight/notes overlay layer.
+
+### 4.10 PDFReaderView
+
+* **Purpose:** PDFKit wrapper; page thumbnails (v2).
+* **States:** no doc → placeholder.
+
+### 4.11 ReviewCard
+
+* **Purpose:** Condensed preview for Review Mode.
+* **Anatomy:** Title, meta line (domain/time/offline), synopsis, tags, StatusChip.
+* **Interactions:** None (actions in bar below).
+
+### 4.12 SidebarRow
+
+* **Purpose:** Filter navigation item with count.
+* **Anatomy:** Label + count.
+
+### 4.13 Empty/Placeholder
+
+* **Purpose:** Friendly empty state with icon + message.
+
+---
+
+## 5) Interaction, Motion & Haptics
+
+* **Swipes:** Leading → Later/Shortlist; Trailing → Archive. Use `.allowsFullSwipe(true)` only for Archive.
+* **Transitions:** `.move(edge:)` for Review cards; `.opacity` for chip/status changes.
+* **Haptics:** soft impact on archive/complete; notification success on export.
+* **Undo:** Snackbar (SwiftUI `.toast`/overlay) with Undo for destructive actions.
+
+---
+
+## 6) Accessibility & Internationalization
+
+* **Hit targets:** ≥ 44pt.
+* **Dynamic Type:** support up to Accessibility XXL. Reader font stepper clamps to 24pt; UI scales with system text styles.
+* **VoiceOver:** Descriptive labels (e.g., “Move to Later”), reorder rotor in lists, announce Review Mode progress.
+* **Color:** Do not rely on color alone → include icons/labels.
+* **Right‑to‑Left:** Ensure list/reader layouts are mirrored correctly.
+
+---
+
+## 7) Keyboard Shortcuts (iPad + Mac)
+
+* **Global:** `⌘K` palette, `⌘F` search, `N` new.
+* **List:** `J/K` navigate, `1/2/3` set Inbox/Later/Shortlist, `A` archive, `T` tag, `E` export.
+* **Reader:** `H` highlight (v2), `N` note, `⌘⌥→` next item.
+* **Review Mode:** `←/→` actions, `↑/↓` navigate, `⌘R` start/end session.
+
+---
+
+## 8) Theming & Dark Mode
+
+* Provide Asset Catalog named colors with light/dark variants for all semantic tokens.
+* Ensure chips keep 15% fill in both modes; verify text contrast.
+* Reader background remains `rr/background`; do not invert to pure black by default.
+
+---
+
+## 9) Implementation Scaffolding (Swift)
+
+```swift
+// DesignTokens.swift
+import SwiftUI
+
+enum RR { // Namespace
+  enum Space { static let xxs: CGFloat = 4; static let xs: CGFloat = 8; static let s: CGFloat = 12; static let m: CGFloat = 16; static let l: CGFloat = 24; static let xl: CGFloat = 32 }
+  enum Radius { static let chip: CGFloat = 12; static let card: CGFloat = 16 }
+  enum Elevation { static let card = Shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 6) }
+  enum Width { static let readerMax: CGFloat = 720 }
+  enum Font { static func readingBody(_ size: CGFloat) -> Font { .system(size: size) } }
+}
+
+struct Shadow { let color: Color; let radius: CGFloat; let x: CGFloat; let y: CGFloat }
+
+extension View {
+  func rrCardShadow() -> some View { self.shadow(color: RR.Elevation.card.color, radius: RR.Elevation.card.radius, x: RR.Elevation.card.x, y: RR.Elevation.card.y) }
+}
+
+extension Color {
+  static let rrBackground = Color("rr/background")
+  static let rrSecondary = Color("rr/backgroundSecondary")
+  static let rrTertiary = Color("rr/backgroundTertiary")
+  static let rrAccent = Color("rr/accent")
+  static let rrInfo = Color("rr/info")
+  static let rrWarn = Color("rr/warn")
+  static let rrSuccess = Color("rr/success")
+  static let rrMuted = Color("rr/muted")
+}
+```
+
+```swift
+// StatusColor.swift
+import SwiftUI
+
+enum ItemStatus: String, CaseIterable, Codable { case inbox, later, shortlist, archived }
+
+extension Color {
+  static func status(_ s: ItemStatus) -> Color {
+    switch s { case .inbox: .rrInfo; case .later: .rrWarn; case .shortlist: .rrAccent; case .archived: .rrMuted }
+  }
+}
+```
+
+```swift
+// ChipStyle.swift
+import SwiftUI
+
+struct ChipStyle: ViewModifier {
+  let tint: Color
+  func body(content: Content) -> some View {
+    content
+      .font(.footnote.weight(.semibold))
+      .padding(.horizontal, 8).padding(.vertical, 4)
+      .background(tint.opacity(0.15), in: Capsule())
+      .foregroundStyle(tint)
+  }
+}
+
+extension View { func chip(tint: Color) -> some View { modifier(ChipStyle(tint: tint)) } }
+```
+
+```swift
+// ReaderTypography.swift
+import SwiftUI
+
+struct ReaderText: ViewModifier {
+  @ScaledMetric var base: CGFloat = 18
+  func body(content: Content) -> some View {
+    content
+      .font(RR.Font.readingBody(base))
+      .lineSpacing(6)
+      .frame(maxWidth: RR.Width.readerMax, alignment: .leading)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(.horizontal)
+  }
+}
+
+extension View { func readerText() -> some View { modifier(ReaderText()) } }
+```
+
+---
+
+## 10) Assets & Naming
+
+* **Colors:** `rr/*` as listed above.
+* **Symbols:** Use SF Symbols by name; avoid custom SVG initially.
+* **Images:** Thumbnails generated on device; store in App Group container.
+
+---
+
+## 11) QA Checklist (Component‑level)
+
+* **Visual:** Light/Dark snapshot tests for chips, rows, cards.
+* **Accessibility:** VoiceOver reads full context; Dynamic Type expands without truncation.
+* **Interaction:** Swipe actions obey thresholds; Undo appears after Archive.
+* **Performance:** List of 1,000 items scrolls at 60fps on 2024 iPad Air.
+
+---
+
+## 12) Roadmap Notes (Components v2)
+
+* **Tag Picker** (typeahead + create)
+* **Highlight Layer** in Reader with note popovers
+* **PDF Thumbs Rail**
+* **Command Palette** (`⌘K`) overlay component
+
+---
+
+## 13) Definition of Ready (for dev handoff)
+
+* Tokens implemented (`DesignTokens.swift` compiled)
+* Light/Dark color assets created
+* Each component has preview with states (empty, long title, RTL, large text)
+* Interaction specs wired (swipes, menus, keyboard shortcuts)

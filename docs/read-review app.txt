@@ -1,0 +1,315 @@
+Read/Review Capture & Triage — Development Plan (v1.0)
+
+iPad‑first, GTD‑aligned, offline‑friendly inbox for Read/Review.
+
+1) Product Overview & Goals
+
+Purpose. Build a fast, low‑friction capture + triage tool for Read/Review inputs (URLs, PDFs, email) that you trust during the Weekly Review.
+
+Objectives
+
+Zero‑friction capture from Share Sheet, drag/drop, paste, and optional email‑forward.
+
+Simple triage flow (Inbox → Later → Shortlist) with quick gestures and tags.
+
+Lightweight reader with highlights/notes and single‑tap archive.
+
+Review Mode that works offline and supports Weekly Review rituals.
+
+Local‑first privacy with optional iCloud sync; no account required to start.
+
+Non‑Goals (v1)
+
+No social features (sharing feeds, public profiles).
+
+No heavy knowledge graph or long‑form note editor.
+
+No server‑side full‑text search of contents (local device only initially).
+
+No Android/Windows clients in v1.
+
+2) Users, JTBD & Success Criteria
+
+Primary user (Jimmy): GTD practitioner who collects articles, PDFs, and emails to review weekly. Values speed, offline, and trust.
+
+Core JTBD
+
+When I encounter something to read later, I want to dump it into a trusted inbox fast, so I can continue working without context switching.
+
+During my Weekly Review, I want an offline shortlist view I can process linearly, highlight, and archive, so I feel complete and current.
+
+Success Metrics
+
+Capture time: < 2 seconds from Share Sheet tap to item saved (p75).
+
+Cold launch: < 1.2s to interactive on iPad (p75).
+
+Reader load: URL to readable snapshot < 2.5s on 4G; PDFs render instantly.
+
+Reliability: < 0.5% capture failures (7‑day moving average).
+
+Trust proxy: 90% of Weekly Reviews completed with the app for 4 consecutive weeks.
+
+3) Feature Breakdown
+
+3.1 Capture
+
+iOS/iPadOS Share Extension (URLs, files, selected text as note).
+
+Drag & Drop (Files, Safari links, Mail attachments) on iPad.
+
+Paste/Quick Add field with auto‑detect (URL / text / PDF from clipboard).
+
+Optional email forward address (behind Sign in with Apple) → parses links + attachments, creates items.
+
+De‑duplication (same normalized URL) and source attribution (Safari, Mail, Files, Email).
+
+3.2 Triage Structure
+
+System statuses: Inbox → Later → Shortlist → Done/Archive.
+
+One‑hand swipe gestures to promote/demote; multi‑select for batch actions.
+
+Optional tags (freeform, auto‑suggest from recent); per‑item est. time (2/5/10/20 min).
+
+Keyboard shortcuts (iPad + external keyboards) for triage.
+
+3.3 Reading/Annotation
+
+Article view: Readability‑style content extraction, typographic reader, link out to original.
+
+PDF view: PDFKit with navigation, highlights, and marginal notes.
+
+Highlights: per‑item, colorless (single emphasis) + inline notes; exportable.
+
+Archive completes item and removes from active queues.
+
+3.4 Review Mode
+
+Filter by status (Later, Shortlist), tags, source, estimated time.
+
+Offline‑first: snapshots of articles + cached PDFs.
+
+Review checklist: reviewed, completed, or archive.
+
+Session counter (items processed, time spent) to reinforce GTD closure.
+
+3.5 Integrations/Exports (optional)
+
+Markdown export per item or batch (title, URL, quotes, notes, tags, metadata).
+
+Notion: push highlights/notes into a database (optional OAuth).
+
+OmniFocus: x‑callback‑url to create a task and attach deep link back to item.
+
+Shortcuts actions: Capture URL, Capture PDF, Open Review Mode, Export Shortlist.
+
+4) Information Architecture
+
+Home: Inbox (default), Later, Shortlist, All, Tags, Recently Archived.
+
+Capture: Quick Add bar; Share Extension; Imports.
+
+Reader: Article/PDF viewer with highlights/notes.
+
+Review: Focused queue with filters + session stats.
+
+Settings: Sync (Local / iCloud), Shortcuts, Export, Email Forward (if enabled), Privacy.
+
+5) Data Model (Local‑first)
+
+Entities
+
+Item (id, createdAt, updatedAt, status, kind[url|pdf|email], title, url, domain, synopsis, estMinutes, source, hasSnapshot, wordCount)
+
+Attachment (id, itemId, type[pdf|image|eml], localPath, fileSize, checksum)
+
+Highlight (id, itemId, start, end, quote, note, pageIndex/pdfRect?, createdAt)
+
+Tag (id, name)
+
+ItemTag (itemId, tagId)
+
+Snapshot (id, itemId, html/plaintext, images, extractedAt, readabilityScore)
+
+ReviewSession (id, startedAt, endedAt, itemsReviewed, actions[archive|complete|skip])
+
+ExportLog (id, itemId, destination[md|notion|of], timestamp, status)
+
+Indexes
+
+status, createdAt, domain, full‑text index on snapshot plaintext (on‑device).
+
+6) Storage, Sync & Offline
+
+Local store: SQLite via Core Data or GRDB. Binary blobs for snapshots/attachments in App Group container (for extension access).
+
+Sync (optional): CloudKit private DB; no third‑party servers required; silent if user is signed into iCloud. Conflict policy = last writer wins with merge for tags/highlights.
+
+Offline policy: Capture always succeeds; snapshots queued; background tasks fetch readable content and cache PDFs.
+
+Background tasks: BGTaskScheduler for prefetching article snapshots and thumbnails.
+
+7) Capture Pipelines (Tech Detail)
+
+Share Extension
+
+Accept NSExtensionItem with public.url, public.file-url, public.data.
+
+Use App Group to write a small Capture Inbox table; main app ingests on next launch.
+
+Paste/Quick Add
+
+UIPasteboard sniffing on focus; propose to add clipboard item with one tap.
+
+Drag & Drop
+
+UIDropInteraction on list surfaces; handle URLs, files (PDF), and text.
+
+Email Forward (opt‑in)
+
+Requires minimal backend: inbox microservice (serverless preferred). Flow: Forwarded message → parse subject/body for links → save primary URL + attachments → Webhook to CloudKit via CloudKit JS or temporary storage + device pull.
+
+Behind Sign in with Apple to issue a randomized user+code@domain address, abuse‑protected (rate limit, SPF/DKIM checks, size caps).
+
+De‑duplication
+
+Normalize URLs (strip UTM/fragments), checksum for PDFs, canonical domain mapping.
+
+8) Readability & PDF Handling
+
+Article extraction
+
+Use a Readability‑style parser (Swift port) over sanitized HTML; block scripts/iframes; store plaintext + minimal HTML for reader.
+
+Fallback to WKWebView if extraction fails; allow Open Original.
+
+PDF
+
+PDFKit rendering; text selection → highlight; notes anchored to selection or page rect.
+
+Snapshots
+
+Store minimal HTML + plaintext for search; lazy download of images.
+
+9) UX Principles (iPad‑first)
+
+Single‑thumb triage: swipe right → Later; swipe right+hold → Shortlist; left → Archive.
+
+Command Palette (⌘K): filter tags/status, batch actions, export.
+
+Multi‑window (iPadOS): split list/reader; drag selection to Shortlist.
+
+Reading comfort: large line‑height, column width control, system Dynamic Type.
+
+Accessibility: VoiceOver labels for triage actions; sufficient hit targets; high‑contrast mode.
+
+10) Privacy & Security
+
+Local‑first by default. No external analytics in v1.
+
+CloudKit sync leverages Apple’s encryption; developer can’t read user data.
+
+Email forward service stores only minimal metadata; auto‑purge raw messages after ingest.
+
+Privacy Manifest with required reasons (e.g., file access, network fetch).
+
+11) Integrations & Extensibility
+
+Exports
+
+Markdown template with front‑matter:
+
+---
+title: ${title}
+url: ${url}
+tags: [${tags}]
+added: ${createdAt}
+---
+${highlights}
+
+Notion: choose database + property mapping; push highlights as child blocks.
+
+OmniFocus: omnifocus://x-callback-url/add?name=Read%3A%20${title}&note=${deepLink}
+
+URL Scheme (for Shortcuts/automation):
+
+rr://capture?url=
+
+rr://open?id=
+
+rr://review?filter=shortlist
+
+12) Non‑Functional Requirements
+
+Launch p75 < 1.2s; TTI < 1.6s.
+
+Memory footprint < 150MB under typical use.
+
+Background snapshot queue resiliency: retries with exponential backoff.
+
+Battery impact: background work capped; respects Low Power Mode.
+
+13) Tech Stack & Architecture
+
+Language/UI: Swift 5.x, SwiftUI + UIKit where needed (PDFKit, keyboard).
+
+Persistence: Core Data or GRDB (prefer GRDB for explicit SQL + FTS5 search).
+
+Sync: CloudKit Private DB (opt‑in toggle). App Groups for extension.
+
+Networking: URLSession with Ephemeral configuration for fetch; Reader fetcher service.
+
+Background: BGTaskScheduler for prefetch, cleanup.
+
+Microservice (email forward): Serverless (Cloudflare Workers / Vercel / AWS Lambda) + durable object/kv for temporary message storage; outgoing Webhook to device channel (poll via push token or periodic fetch). Sign in with Apple via ASAuthorizationAppleIDProvider if enabled.
+
+Feature flags: compile‑time + remote JSON (checked at startup; cached locally).
+
+High‑Level Diagram (text)
+
+[Share Ext / Paste / Drag / Email] → Capture Inbox (App Group DB)
+→ Main App Ingest → Item Store (SQLite/GRDB) → Snapshot Queue → Article Parser
+→ Snapshots/Attachments (App Group Files)
+→ Review Mode / Reader / Exports
+→ (Optional) CloudKit Sync (Private DB)
+
+14) Release Plan (Phased)
+
+Phase 0 — Spikes & Skeleton
+
+Project scaffolding, App Group, GRDB/Core Data baseline, list/detail screens, stub parser.
+
+Acceptance: App launches, can create dummy items, persists across launches.
+
+Phase 1 — Local Capture
+
+Share Extension (URL/PDF), Quick Add, Clipboard suggester, basic list with statuses.
+
+Acceptance: Capture from Safari & Files; items appear in Inbox instantly; dedupe works.
+
+Phase 2 — Reader & PDF
+
+Readability parser MVP, WKWebView fallback, PDFKit with basic highlights.
+
+Acceptance: 80% of news/blog URLs render cleanly; highlight storage round‑trips.
+
+Phase 3 — Triage & Review Mode
+
+Swipes, tags, Shortlist, Review Mode with filters + offline cache.
+
+Acceptance: Airplane mode review of previously captured items succeeds.
+
+Phase 4 — Export & Shortcuts
+
+Markdown export, URL scheme, OmniFocus x‑callback, basic Notion export.
+
+Acceptance: Batch export of Shortlist to MD; OF task created with deep link.
+
+Phase 5 — Sync (CloudKit)
+
+Private DB sync, conflict handling, background fetch.
+
+Acceptance: Two devices stay within 5s after foregrounding; edits merge.
+
+**Phase 

@@ -1,0 +1,41 @@
+{
+  "name": "read-review-webapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "@tanstack/react-virtual": "^3.13.12",
+    "cheerio": "^1.1.2",
+    "clsx": "^2.1.1",
+    "dexie": "^4.2.0",
+    "jsdom": "^26.1.0",
+    "next": "15.5.2",
+    "pdfjs-dist": "^5.4.149",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "tailwind-merge": "^3.3.1",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^20.19.13",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.2",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

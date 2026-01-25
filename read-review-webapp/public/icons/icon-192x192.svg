@@ -1,0 +1,28 @@
+<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="192" height="192" rx="24" fill="#5e5ce6"/>
+  
+  <!-- Book Icon -->
+  <g transform="translate(48, 48)">
+    <!-- Book Pages -->
+    <path d="M8 12h32a4 4 0 0 1 4 4v56a3 3 0 0 0-3-3H8V12z" fill="white" opacity="0.9"/>
+    <path d="M88 12H56a4 4 0 0 0-4 4v56a3 3 0 0 1 3-3h33V12z" fill="white" opacity="0.9"/>
+    
+    <!-- Book Spine -->
+    <line x1="48" y1="12" x2="48" y2="72" stroke="white" stroke-width="2" opacity="0.7"/>
+    
+    <!-- Reading Progress Indicator -->
+    <rect x="12" y="20" width="24" height="2" rx="1" fill="white" opacity="0.6"/>
+    <rect x="12" y="28" width="20" height="2" rx="1" fill="white" opacity="0.6"/>
+    <rect x="12" y="36" width="28" height="2" rx="1" fill="white" opacity="0.6"/>
+    <rect x="12" y="44" width="16" height="2" rx="1" fill="white" opacity="0.6"/>
+    
+    <rect x="60" y="20" width="24" height="2" rx="1" fill="white" opacity="0.6"/>
+    <rect x="60" y="28" width="20" height="2" rx="1" fill="white" opacity="0.6"/>
+    <rect x="60" y="36" width="28" height="2" rx="1" fill="white" opacity="0.6"/>
+    <rect x="60" y="44" width="16" height="2" rx="1" fill="white" opacity="0.6"/>
+  </g>
+  
+  <!-- App Name -->
+  <text x="96" y="168" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="white" text-anchor="middle" opacity="0.9">Read/Review</text>
+</svg>
