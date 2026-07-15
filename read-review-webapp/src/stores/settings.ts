@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import { ReaderSettings } from "@/types";
+
+const SETTINGS_STORAGE_KEY = "read-review-settings";
 
 interface SettingsStore {
   // Reader settings
@@ -41,6 +42,7 @@ const defaultSettings: Omit<SettingsStore,
     fontSize: 18,
     lineHeight: 1.6,
     maxWidth: 720,
+    fontFamily: "sans-serif",
     theme: "system",
   },
   sidebarCollapsed: false,
@@ -52,7 +54,6 @@ const defaultSettings: Omit<SettingsStore,
 };
 
 export const useSettingsStore = create<SettingsStore>()(
-  persist(
     (set, get) => ({
       ...defaultSettings,
 
@@ -94,23 +95,57 @@ export const useSettingsStore = create<SettingsStore>()(
       resetToDefaults: () => {
         set(defaultSettings);
       },
-    }),
-    {
-      name: "read-review-settings",
-      // Only persist settings, not functions
-      partialize: (state) => ({
-        reader: state.reader,
-        sidebarCollapsed: state.sidebarCollapsed,
-        darkMode: state.darkMode,
-        autoDetectClipboard: state.autoDetectClipboard,
-        showCaptureNotifications: state.showCaptureNotifications,
-        autoCleanupDays: state.autoCleanupDays,
-        maxStorageGB: state.maxStorageGB,
-      }),
-      // Skip hydration during SSR
-      skipHydration: true,
-    }
-  )
+    })
 );
+
+type PersistedSettings = Pick<
+  SettingsStore,
+  | "reader"
+  | "sidebarCollapsed"
+  | "darkMode"
+  | "autoDetectClipboard"
+  | "showCaptureNotifications"
+  | "autoCleanupDays"
+  | "maxStorageGB"
+>;
+
+const persistableSettings = (state: SettingsStore): PersistedSettings => ({
+  reader: state.reader,
+  sidebarCollapsed: state.sidebarCollapsed,
+  darkMode: state.darkMode,
+  autoDetectClipboard: state.autoDetectClipboard,
+  showCaptureNotifications: state.showCaptureNotifications,
+  autoCleanupDays: state.autoCleanupDays,
+  maxStorageGB: state.maxStorageGB,
+});
+
+export function startSettingsPersistence(): () => void {
+  if (typeof window === "undefined") return () => undefined;
+
+  try {
+    const stored = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as Partial<PersistedSettings>;
+      useSettingsStore.setState((current) => ({
+        ...current,
+        ...parsed,
+        reader: { ...current.reader, ...parsed.reader },
+      }));
+    }
+  } catch (error) {
+    console.warn("Unable to restore reader settings:", error);
+  }
+
+  return useSettingsStore.subscribe((state) => {
+    try {
+      window.localStorage.setItem(
+        SETTINGS_STORAGE_KEY,
+        JSON.stringify(persistableSettings(state)),
+      );
+    } catch (error) {
+      console.warn("Unable to persist reader settings:", error);
+    }
+  });
+}
 
 // System theme change listener will be handled by ThemeProvider

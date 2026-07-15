@@ -8,8 +8,6 @@ import {
   ReviewSession,
   ExportLog,
   ItemStatus,
-  ItemKind,
-  ItemSource,
 } from "@/types";
 
 export class ReadReviewDatabase extends Dexie {

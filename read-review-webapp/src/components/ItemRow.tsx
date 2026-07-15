@@ -11,7 +11,7 @@ interface ItemRowProps {
   item: Item;
   selected?: boolean;
   focused?: boolean;
-  onToggleSelect?: (id: string) => void;
+  onToggleSelect?: (id: string, withShift?: boolean) => void;
   onClick?: (item: Item) => void;
   className?: string;
 }
@@ -27,7 +27,7 @@ export function ItemRow({
   const handleClick = (e: React.MouseEvent) => {
     // Don't trigger row click if clicking on interactive elements
     const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('[role="button"]')) {
+    if (target.closest('button')) {
       return;
     }
     
@@ -37,8 +37,7 @@ export function ItemRow({
   const handleSelectClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onToggleSelect) {
-      // Pass shift key state for range selection
-      (onToggleSelect as any)(item.id, e.shiftKey);
+      onToggleSelect(item.id, e.shiftKey);
     }
   };
 

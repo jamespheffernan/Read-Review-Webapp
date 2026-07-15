@@ -1,7 +1,7 @@
 "use client";
 
 import { ItemService, SnapshotService } from './data-access';
-import { Item, ItemKind, ItemSource, Snapshot } from '@/types';
+import { Item, ItemKind, ItemSource, ItemStatus, Snapshot } from '@/types';
 import { generateId } from './utils';
 
 export interface ExtractedContent {
@@ -276,7 +276,7 @@ export class ContentProcessor {
             attachments: [],
             createdAt: new Date(),
             updatedAt: new Date(),
-            status: 0,
+            status: ItemStatus.INBOX,
             hasSnapshot: false,
           },
           success: false,

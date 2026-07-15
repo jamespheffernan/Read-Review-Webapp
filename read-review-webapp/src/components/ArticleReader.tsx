@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Item } from "@/types";
+import { Item, Snapshot } from "@/types";
 import { SnapshotService } from "@/lib/data-access";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +10,7 @@ interface ArticleReaderProps {
 }
 
 export function ArticleReader({ item }: ArticleReaderProps) {
-  const [snapshot, setSnapshot] = useState<any>(null);
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [readingProgress, setReadingProgress] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -20,8 +20,8 @@ export function ArticleReader({ item }: ArticleReaderProps) {
     async function loadSnapshot() {
       try {
         setLoading(true);
-        const itemSnapshot = await SnapshotService.getByItemId(item.id);
-        setSnapshot(itemSnapshot);
+        const itemSnapshot = await SnapshotService.getByItem(item.id);
+        setSnapshot(itemSnapshot ?? null);
       } catch (error) {
         console.error("Failed to load snapshot:", error);
       } finally {
@@ -149,7 +149,7 @@ export function ArticleReader({ item }: ArticleReaderProps) {
             </div>
             <h3 className="text-lg font-medium mb-2">No Content Available</h3>
             <p className="text-foreground-secondary mb-4">
-              This item doesn't have readable content yet.
+              This item doesn&apos;t have readable content yet.
             </p>
             {item.url && (
               <a

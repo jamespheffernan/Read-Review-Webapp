@@ -8,14 +8,22 @@ interface UseEnhancedSelectionProps {
   items: Item[];
 }
 
-interface BulkOperation {
+interface BulkOperationBase {
   id: string;
-  type: 'status_change' | 'delete';
   description: string;
   itemIds: string[];
-  previousData?: any;
   timestamp: Date;
 }
+
+type BulkOperation =
+  | (BulkOperationBase & {
+      type: 'status_change';
+      previousData: Array<{ id: string; status: ItemStatus }>;
+    })
+  | (BulkOperationBase & {
+      type: 'delete';
+      previousData: Item[];
+    });
 
 export function useEnhancedSelection({ items }: UseEnhancedSelectionProps) {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -80,23 +88,6 @@ export function useEnhancedSelection({ items }: UseEnhancedSelectionProps) {
     setSelectedItems(statusItems.map(item => item.id));
   }, [items]);
 
-  // Bulk operations with undo support
-  const createOperation = useCallback((
-    type: BulkOperation['type'],
-    description: string,
-    itemIds: string[],
-    previousData?: any
-  ): BulkOperation => {
-    return {
-      id: Math.random().toString(36).substring(2),
-      type,
-      description,
-      itemIds,
-      previousData,
-      timestamp: new Date(),
-    };
-  }, []);
-
   const addToHistory = useCallback((operation: BulkOperation) => {
     setOperationHistory(prev => [operation, ...prev.slice(0, 9)]); // Keep last 10 operations
   }, []);
@@ -108,34 +99,38 @@ export function useEnhancedSelection({ items }: UseEnhancedSelectionProps) {
     const itemsToUpdate = items.filter(item => selectedItems.includes(item.id));
     const previousData = itemsToUpdate.map(item => ({ id: item.id, status: item.status }));
     
-    const operation = createOperation(
-      'status_change',
-      `Moved ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''} to ${newStatus}`,
-      selectedItems,
-      previousData
-    );
+    const operation: BulkOperation = {
+      id: crypto.randomUUID(),
+      type: 'status_change',
+      description: `Moved ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''} to ${newStatus}`,
+      itemIds: selectedItems,
+      previousData,
+      timestamp: new Date(),
+    };
 
     try {
-      await store.bulkUpdateStatus(selectedItems, newStatus);
+      await store.batchUpdateStatus(selectedItems, newStatus);
       addToHistory(operation);
       clearSelection();
     } catch (error) {
       console.error('Bulk status update failed:', error);
       throw error;
     }
-  }, [selectedItems, items, store, createOperation, addToHistory, clearSelection]);
+  }, [selectedItems, items, store, addToHistory, clearSelection]);
 
   // Bulk delete
   const bulkDelete = useCallback(async () => {
     if (selectedItems.length === 0) return;
 
     const itemsToDelete = items.filter(item => selectedItems.includes(item.id));
-    const operation = createOperation(
-      'delete',
-      `Deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`,
-      selectedItems,
-      itemsToDelete
-    );
+    const operation: BulkOperation = {
+      id: crypto.randomUUID(),
+      type: 'delete',
+      description: `Deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`,
+      itemIds: selectedItems,
+      previousData: itemsToDelete,
+      timestamp: new Date(),
+    };
 
     try {
       await store.batchDelete(selectedItems);
@@ -145,7 +140,7 @@ export function useEnhancedSelection({ items }: UseEnhancedSelectionProps) {
       console.error('Bulk delete failed:', error);
       throw error;
     }
-  }, [selectedItems, items, store, createOperation, addToHistory, clearSelection]);
+  }, [selectedItems, items, store, addToHistory, clearSelection]);
 
   // Undo last operation
   const undoLastOperation = useCallback(async () => {
@@ -153,12 +148,12 @@ export function useEnhancedSelection({ items }: UseEnhancedSelectionProps) {
     if (!lastOperation) return;
 
     try {
-      if (lastOperation.type === 'status_change' && lastOperation.previousData) {
+      if (lastOperation.type === 'status_change') {
         // Restore previous statuses
         for (const item of lastOperation.previousData) {
-          await store.updateStatus(item.id, item.status);
+          await store.updateItemStatus(item.id, item.status);
         }
-      } else if (lastOperation.type === 'delete' && lastOperation.previousData) {
+      } else if (lastOperation.type === 'delete') {
         // Restore deleted items
         for (const item of lastOperation.previousData) {
           await store.createItem(item);

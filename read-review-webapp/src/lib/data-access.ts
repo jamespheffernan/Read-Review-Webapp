@@ -19,10 +19,12 @@ export class ItemService {
     title: string;
     url?: string;
     content?: string;
+    synopsis?: string;
     kind: ItemKind;
     source: ItemSource;
     tags?: string[];
     estMinutes?: number;
+    wordCount?: number;
   }): Promise<Item> {
     const item: Item = {
       id: generateId(),
@@ -34,9 +36,9 @@ export class ItemService {
       title: data.title,
       url: data.url ? normalizeUrl(data.url) : undefined,
       domain: data.url ? extractDomain(data.url) : undefined,
-      synopsis: data.content ? data.content.substring(0, 200) + "..." : undefined,
+      synopsis: data.synopsis ?? (data.content ? data.content.substring(0, 200) + "..." : undefined),
       estMinutes: data.estMinutes,
-      wordCount: data.content ? countWords(data.content) : undefined,
+      wordCount: data.wordCount ?? (data.content ? countWords(data.content) : undefined),
       hasSnapshot: false,
       tags: data.tags || [],
       highlights: [],

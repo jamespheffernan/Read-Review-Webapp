@@ -35,6 +35,7 @@ export interface Item {
   url?: string;
   domain?: string;
   synopsis?: string;
+  content?: string;
   
   // Metadata
   estMinutes?: number;
@@ -133,6 +134,7 @@ export interface ReaderSettings {
   fontSize: number; // 16-24px
   lineHeight: number; // 1.4-2.0
   maxWidth: number; // pixels
+  fontFamily: "serif" | "sans-serif";
   theme: "light" | "dark" | "system";
 }
 

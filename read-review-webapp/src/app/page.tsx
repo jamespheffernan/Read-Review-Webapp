@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 // Force dynamic rendering since we use IndexedDB
 export const dynamic = 'force-dynamic';
 import { Layout } from "@/components/Layout";
 import { ItemList } from "@/components/ItemList";
-import { ClientOnly } from "@/components/ClientOnly";
 import { useItems, useQuickCapture } from "@/hooks/useItems";
 import { ItemStatus, Item } from "@/types";
 import { db } from "@/lib/database";
 
 export default function Home() {
+  const router = useRouter();
   const { items, loading, error } = useItems();
   const { captureUrl, captureText } = useQuickCapture();
   const [mounted, setMounted] = useState(false);
@@ -52,8 +53,7 @@ export default function Home() {
   }
 
   const handleItemClick = (item: Item) => {
-    console.log("Item clicked:", item.title);
-    // TODO: Navigate to reader view
+    router.push(`/reader/${item.id}`);
   };
 
   const addSampleData = async () => {
@@ -71,13 +71,10 @@ export default function Home() {
     try {
       const domains = ["github.com", "stackoverflow.com", "medium.com", "dev.to", "hackernews.com"];
       const topics = ["React", "TypeScript", "Next.js", "Web Development", "JavaScript", "CSS", "Node.js", "Python", "AI", "Machine Learning"];
-      const tags = ["tutorial", "guide", "reference", "news", "opinion", "deep-dive", "beginner", "advanced"];
       
       for (let i = 0; i < 100; i++) {
         const domain = domains[Math.floor(Math.random() * domains.length)];
         const topic = topics[Math.floor(Math.random() * topics.length)];
-        const randomTags = tags.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1);
-        
         await captureUrl(
           `https://${domain}/article/${i}`, 
           `${topic} - Article ${i + 1}`
@@ -118,26 +115,28 @@ export default function Home() {
               </p>
             </div>
             
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={addSampleData}
-                className="px-3 py-1.5 text-sm bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
-              >
-                Add Sample Data
-              </button>
-              <button 
-                onClick={addManyTestItems}
-                className="px-3 py-1.5 text-sm bg-info text-white rounded-lg hover:bg-info/90 transition-colors"
-              >
-                Add 100 Items
-              </button>
-              <button 
-                onClick={resetDatabase}
-                className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Reset DB
-              </button>
-            </div>
+            {process.env.NODE_ENV === "development" && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={addSampleData}
+                  className="px-3 py-1.5 text-sm bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
+                >
+                  Add Sample Data
+                </button>
+                <button
+                  onClick={addManyTestItems}
+                  className="px-3 py-1.5 text-sm bg-info text-white rounded-lg hover:bg-info/90 transition-colors"
+                >
+                  Add 100 Items
+                </button>
+                <button
+                  onClick={resetDatabase}
+                  className="px-3 py-1.5 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                >
+                  Reset DB
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

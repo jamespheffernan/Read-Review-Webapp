@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ItemKind, ItemSource } from "@/types";
 import { useQuickCapture } from "@/hooks/useItems";
 import { cn } from "@/lib/utils";
 

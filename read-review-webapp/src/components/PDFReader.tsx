@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { PDFDocumentProxy } from "pdfjs-dist";
 import { Item } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +16,7 @@ export function PDFReader({ item }: PDFReaderProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pdfDocRef = useRef<any>(null);
+  const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -35,7 +36,10 @@ export function PDFReader({ item }: PDFReaderProps) {
         const pdfjsLib = await import('pdfjs-dist');
         
         // Set worker source
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+          "pdfjs-dist/build/pdf.worker.min.mjs",
+          import.meta.url,
+        ).toString();
 
         const pdf = await pdfjsLib.getDocument(item.url).promise;
         
@@ -43,9 +47,6 @@ export function PDFReader({ item }: PDFReaderProps) {
         
         pdfDocRef.current = pdf;
         setTotalPages(pdf.numPages);
-        
-        // Render first page
-        await renderPage(1);
         
       } catch (err) {
         console.error("Failed to load PDF:", err);
@@ -66,7 +67,7 @@ export function PDFReader({ item }: PDFReaderProps) {
     };
   }, [item.url]);
 
-  const renderPage = async (pageNum: number) => {
+  const renderPage = useCallback(async (pageNum: number) => {
     if (!pdfDocRef.current || !canvasRef.current) return;
 
     try {
@@ -75,49 +76,52 @@ export function PDFReader({ item }: PDFReaderProps) {
       
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
+      if (!context) {
+        throw new Error("Canvas rendering is unavailable");
+      }
       
       canvas.height = viewport.height;
       canvas.width = viewport.width;
       
       const renderContext = {
+        canvas,
         canvasContext: context,
         viewport: viewport,
       };
       
       await page.render(renderContext).promise;
-      setCurrentPage(pageNum);
-      
     } catch (err) {
       console.error("Failed to render page:", err);
       setError("Failed to render PDF page");
     }
-  };
+  }, [scale]);
 
-  const goToPage = (pageNum: number) => {
-    if (pageNum >= 1 && pageNum <= totalPages) {
-      renderPage(pageNum);
+  useEffect(() => {
+    if (totalPages > 0) {
+      void renderPage(currentPage);
     }
-  };
+  }, [currentPage, renderPage, totalPages]);
 
-  const nextPage = () => goToPage(currentPage + 1);
-  const prevPage = () => goToPage(currentPage - 1);
+  const goToPage = useCallback((pageNum: number) => {
+    if (pageNum >= 1 && pageNum <= totalPages) {
+      setCurrentPage(pageNum);
+    }
+  }, [totalPages]);
 
-  const zoomIn = () => {
-    const newScale = Math.min(scale + 0.2, 3.0);
-    setScale(newScale);
-    renderPage(currentPage);
-  };
+  const nextPage = useCallback(() => goToPage(currentPage + 1), [currentPage, goToPage]);
+  const prevPage = useCallback(() => goToPage(currentPage - 1), [currentPage, goToPage]);
 
-  const zoomOut = () => {
-    const newScale = Math.max(scale - 0.2, 0.5);
-    setScale(newScale);
-    renderPage(currentPage);
-  };
+  const zoomIn = useCallback(() => {
+    setScale((currentScale) => Math.min(currentScale + 0.2, 3.0));
+  }, []);
 
-  const resetZoom = () => {
+  const zoomOut = useCallback(() => {
+    setScale((currentScale) => Math.max(currentScale - 0.2, 0.5));
+  }, []);
+
+  const resetZoom = useCallback(() => {
     setScale(1.2);
-    renderPage(currentPage);
-  };
+  }, []);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -152,7 +156,7 @@ export function PDFReader({ item }: PDFReaderProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPage, totalPages, scale]);
+  }, [nextPage, prevPage, resetZoom, zoomIn, zoomOut]);
 
   if (loading) {
     return (

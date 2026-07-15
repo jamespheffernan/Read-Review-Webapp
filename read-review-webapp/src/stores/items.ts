@@ -28,9 +28,12 @@ interface ItemStore {
     title: string;
     url?: string;
     content?: string;
+    synopsis?: string;
     kind: import("@/types").ItemKind;
     source: import("@/types").ItemSource;
     tags?: string[];
+    estMinutes?: number;
+    wordCount?: number;
   }) => Promise<Item>;
   updateItem: (id: string, updates: Partial<Item>) => Promise<void>;
   updateItemStatus: (id: string, status: ItemStatus) => Promise<void>;

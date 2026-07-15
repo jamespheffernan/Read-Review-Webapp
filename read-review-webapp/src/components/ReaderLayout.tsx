@@ -19,8 +19,11 @@ export function ReaderLayout({ item, children, onClose, onItemUpdate }: ReaderLa
   const [lineHeight, setLineHeight] = useState(1.6);
   const [maxWidth, setMaxWidth] = useState(65); // rem units
 
-  const handleStatusChange = (newStatus: ItemStatus) => {
+  const handleStatusChange = () => {
     if (item && onItemUpdate) {
+      const statuses = Object.values(ItemStatus);
+      const currentIndex = statuses.indexOf(item.status);
+      const newStatus = statuses[(currentIndex + 1) % statuses.length];
       onItemUpdate({ status: newStatus });
     }
   };
@@ -52,7 +55,7 @@ export function ReaderLayout({ item, children, onClose, onItemUpdate }: ReaderLa
               </h1>
               <StatusChip 
                 status={item.status} 
-                onClick={(status) => handleStatusChange(status)}
+                onClick={handleStatusChange}
               />
             </div>
           )}

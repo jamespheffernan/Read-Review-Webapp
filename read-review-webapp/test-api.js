@@ -1,6 +1,4 @@
 // Simple test script to verify the extraction API works
-const fetch = require('node-fetch');
-
 async function testExtraction() {
   try {
     console.log('Testing extraction API...');

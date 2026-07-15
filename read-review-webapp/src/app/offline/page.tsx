@@ -146,7 +146,7 @@ export default function OfflinePage() {
         <div className="mt-6 text-xs text-foreground-tertiary">
           <p>
             Read/Review works offline thanks to Progressive Web App technology.
-            Your data is stored locally and will sync when you're back online.
+            Your saved library stays in this browser and is available again when you&apos;re online.
           </p>
         </div>
       </div>

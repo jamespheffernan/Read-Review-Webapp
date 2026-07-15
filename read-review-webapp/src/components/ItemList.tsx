@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Item, ItemStatus } from "@/types";
+import { Item } from "@/types";
 import { ItemRow } from "./ItemRow";
 import { useEnhancedSelection } from "@/hooks/useEnhancedSelection";
 import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation";
@@ -40,7 +40,6 @@ export function ItemList({
     moveToLater,
     moveToShortlist,
     deleteSelected,
-    operationHistory,
     undoLastOperation,
     canUndo,
     handleKeyboardShortcuts,

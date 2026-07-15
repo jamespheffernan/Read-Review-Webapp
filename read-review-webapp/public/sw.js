@@ -10,8 +10,8 @@ const STATIC_FILES = [
   '/',
   '/offline',
   '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
+  '/icons/icon-192x192.svg',
+  '/icons/icon-512x512.svg',
 ];
 
 // Install event - cache static files
@@ -101,7 +101,7 @@ async function networkFirstStrategy(request) {
     }
     
     return networkResponse;
-  } catch (error) {
+  } catch {
     console.log('Service Worker: Network failed, trying cache for:', request.url);
     
     // Fallback to cache
@@ -143,7 +143,7 @@ async function cacheFirstStrategy(request) {
     }
     
     return networkResponse;
-  } catch (error) {
+  } catch {
     console.log('Service Worker: Failed to fetch:', request.url);
     
     // Return offline fallback for HTML requests
@@ -171,7 +171,7 @@ async function handleNavigationRequest(request) {
     }
     
     return networkResponse;
-  } catch (error) {
+  } catch {
     console.log('Service Worker: Navigation failed, trying cache for:', request.url);
     
     // Try cache
@@ -268,8 +268,7 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: event.data ? event.data.text() : 'New content available',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/badge-72x72.png',
+    icon: '/icons/icon-192x192.svg',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -278,13 +277,11 @@ self.addEventListener('push', (event) => {
     actions: [
       {
         action: 'explore',
-        title: 'View',
-        icon: '/icons/action-view.png'
+        title: 'View'
       },
       {
         action: 'close',
-        title: 'Close',
-        icon: '/icons/action-close.png'
+        title: 'Close'
       }
     ]
   };

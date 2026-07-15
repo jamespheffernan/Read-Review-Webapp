@@ -1,18 +1,19 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useItemStore } from "@/stores/items";
-import { ItemStatus, FilterState, ItemKind, ItemSource } from "@/types";
+import { ItemStatus, FilterState } from "@/types";
 import { ContentProcessor } from "@/lib/content-processor";
 
 // Main hook for item operations
 export function useItems() {
   const store = useItemStore();
+  const loadItems = store.loadItems;
 
   // Auto-load items on mount (client-side only)
   useEffect(() => {
     if (typeof window !== "undefined") {
-      store.loadItems();
+      void loadItems();
     }
-  }, []); // Empty dependency array to run only once
+  }, [loadItems]);
 
   return {
     // State
@@ -80,9 +81,9 @@ export function useFilteredItems(filter: FilterState) {
 
 // Hook for quick capture with content processing
 export function useQuickCapture() {
-  const store = useItemStore();
+  const loadItems = useItemStore((state) => state.loadItems);
 
-  const captureUrl = async (url: string, title?: string) => {
+  const captureUrl = useCallback(async (url: string, title?: string) => {
     try {
       const result = await ContentProcessor.processUrl(url, title, {
         extractContent: true,
@@ -91,16 +92,16 @@ export function useQuickCapture() {
       });
       
       // Refresh the store to show the new item
-      await store.loadItems();
+      await loadItems();
       
       return result.item;
     } catch (error) {
       console.error('Failed to capture URL:', error);
       throw error;
     }
-  };
+  }, [loadItems]);
 
-  const captureText = async (title: string, content: string, tags?: string[]) => {
+  const captureText = useCallback(async (title: string, content: string, tags?: string[]) => {
     try {
       const result = await ContentProcessor.processText(title, content, tags, {
         generateSnapshot: true,
@@ -108,16 +109,16 @@ export function useQuickCapture() {
       });
       
       // Refresh the store to show the new item
-      await store.loadItems();
+      await loadItems();
       
       return result.item;
     } catch (error) {
       console.error('Failed to capture text:', error);
       throw error;
     }
-  };
+  }, [loadItems]);
 
-  const captureFromClipboard = async () => {
+  const captureFromClipboard = useCallback(async () => {
     try {
       const clipboardText = await navigator.clipboard.readText();
       
@@ -132,7 +133,7 @@ export function useQuickCapture() {
     } catch {
       throw new Error("Failed to read clipboard");
     }
-  };
+  }, [captureText, captureUrl]);
 
   return {
     captureUrl,

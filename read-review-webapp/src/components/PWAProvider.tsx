@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
 
 interface PWAProviderProps {
   children: React.ReactNode;
@@ -10,7 +14,7 @@ interface PWAProviderProps {
 export function PWAProvider({ children }: PWAProviderProps) {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
@@ -20,9 +24,10 @@ export function PWAProvider({ children }: PWAProviderProps) {
     }
 
     // Handle install prompt
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
+    const handleBeforeInstallPrompt = (event: Event) => {
+      const promptEvent = event as BeforeInstallPromptEvent;
+      promptEvent.preventDefault();
+      setDeferredPrompt(promptEvent);
       setShowInstallPrompt(true);
     };
 
@@ -115,7 +120,7 @@ export function PWAProvider({ children }: PWAProviderProps) {
         <div className="fixed top-0 left-0 right-0 z-50 bg-yellow-500 text-black px-4 py-2 text-center text-sm font-medium">
           <div className="flex items-center justify-center gap-2">
             <OfflineIcon className="w-4 h-4" />
-            You're offline - some features may be limited
+            You&apos;re offline - some features may be limited
           </div>
         </div>
       )}

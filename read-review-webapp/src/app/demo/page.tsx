@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { ContentProcessingStatus } from "@/components/ContentProcessingStatus";
-import { ContentProcessor, type ProcessingResult } from "@/lib/content-processor";
+import type { ProcessingResult } from "@/lib/content-processor";
 import { ItemKind, ItemSource, ItemStatus } from "@/types";
 import { cn } from "@/lib/utils";
 

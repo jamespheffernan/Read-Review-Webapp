@@ -1,8 +1,9 @@
-const { JSDOM } = require('jsdom');
-const { Readability } = require('@mozilla/readability');
-const cheerio = require('cheerio');
-
 async function testExtraction() {
+  const [{ JSDOM }, { Readability }, cheerio] = await Promise.all([
+    import('jsdom'),
+    import('@mozilla/readability'),
+    import('cheerio'),
+  ]);
   const url = 'https://daringfireball.net/linked/2025/09/06/siegler-cynical-read';
   
   console.log('Fetching:', url);

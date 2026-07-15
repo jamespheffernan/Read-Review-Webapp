@@ -93,7 +93,7 @@ export function BookmarkletInstructions({ className }: BookmarkletInstructionsPr
             <ol className="text-sm space-y-1 text-foreground-secondary">
               <li>1. Copy the code above</li>
               <li>2. Create a new bookmark in your browser</li>
-              <li>3. Set the name to "Read/Review Capture"</li>
+              <li>3. Set the name to &quot;Read/Review Capture&quot;</li>
               <li>4. Paste the code as the URL/location</li>
               <li>5. Click the bookmark on any page to capture it!</li>
             </ol>

@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 import * as cheerio from 'cheerio';
+import { lookup } from 'node:dns/promises';
+import ipaddr from 'ipaddr.js';
+import sanitizeHtml from 'sanitize-html';
+
+const MAX_PAGE_BYTES = 2 * 1024 * 1024;
+const MAX_REDIRECTS = 4;
+
+class ExtractionRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
 
 export interface ExtractedContent {
   title: string;
@@ -19,32 +31,60 @@ export interface ExtractedContent {
   language?: string;
 }
 
+interface PageMetadata {
+  title?: string;
+  description?: string;
+  author?: string;
+  siteName?: string;
+  publishedDate?: string;
+}
+
+interface ExtractionOptions {
+  includeImages?: boolean;
+  includeLinks?: boolean;
+  generateTags?: boolean;
+  detectLanguage?: boolean;
+  maxContentLength?: number;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { url, options = {} } = await request.json();
-
-    if (!url) {
+    if (process.env.ALLOW_REMOTE_EXTRACTION !== '1') {
       return NextResponse.json(
-        { error: 'URL is required' },
-        { status: 400 }
+        { error: 'Remote extraction is disabled' },
+        { status: 503 },
       );
     }
 
-    // Fetch the HTML content
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; ReadReview/1.0; +https://readreview.app)',
-      },
-    });
+    const body: unknown = await request.json();
+    if (!body || typeof body !== 'object') {
+      throw new ExtractionRequestError('A JSON request body is required', 400);
+    }
+
+    const { url, options = {} } = body as {
+      url?: unknown;
+      options?: ExtractionOptions;
+    };
+
+    if (typeof url !== 'string' || url.length > 2_048) {
+      throw new ExtractionRequestError('A valid URL is required', 400);
+    }
+
+    const response = await fetchPublicPage(url);
 
     if (!response.ok) {
-      return NextResponse.json(
-        { error: `HTTP ${response.status}: ${response.statusText}` },
-        { status: response.status }
+      throw new ExtractionRequestError(
+        `The remote page returned HTTP ${response.status}`,
+        502,
       );
     }
 
-    const html = await response.text();
+    const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+    if (!contentType.includes('text/html') && !contentType.includes('application/xhtml+xml')) {
+      throw new ExtractionRequestError('The remote resource is not an HTML page', 415);
+    }
+
+    const html = await readLimitedText(response);
     const extractedContent = await extractFromHtml(html, url, options);
 
     return NextResponse.json({
@@ -53,26 +93,145 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Content extraction error:', error);
+    if (!(error instanceof ExtractionRequestError)) {
+      console.error('Content extraction error:', error);
+    }
+    const status = error instanceof ExtractionRequestError ? error.status : 500;
     return NextResponse.json(
-      { 
-        error: 'Content extraction failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
+      {
+        error: error instanceof ExtractionRequestError
+          ? error.message
+          : 'Content extraction failed',
       },
-      { status: 500 }
+      { status },
     );
   }
 }
 
-async function extractFromHtml(html: string, url?: string, options: Record<string, unknown> = {}): Promise<ExtractedContent> {
+async function fetchPublicPage(input: string): Promise<Response> {
+  let currentUrl = await validatePublicUrl(input);
+
+  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
+    let response: Response;
+    try {
+      response = await fetch(currentUrl, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(10_000),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; ReadReview/0.1)',
+        },
+      });
+    } catch {
+      throw new ExtractionRequestError('The remote page could not be reached', 502);
+    }
+
+    if (response.status < 300 || response.status >= 400) {
+      return response;
+    }
+
+    const location = response.headers.get('location');
+    if (!location) {
+      throw new ExtractionRequestError('The remote page returned an invalid redirect', 502);
+    }
+    if (redirectCount === MAX_REDIRECTS) {
+      throw new ExtractionRequestError('The remote page redirected too many times', 502);
+    }
+
+    currentUrl = await validatePublicUrl(new URL(location, currentUrl).toString());
+  }
+
+  throw new ExtractionRequestError('The remote page could not be reached', 502);
+}
+
+async function validatePublicUrl(input: string): Promise<URL> {
+  let url: URL;
+  try {
+    url = new URL(input);
+  } catch {
+    throw new ExtractionRequestError('The URL is invalid', 400);
+  }
+
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new ExtractionRequestError('Only HTTP and HTTPS URLs are supported', 400);
+  }
+  if (url.username || url.password) {
+    throw new ExtractionRequestError('URLs containing credentials are not supported', 400);
+  }
+
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+  const blockedSuffixes = ['.localhost', '.local', '.internal', '.home', '.lan'];
+  if (
+    !hostname.includes('.') ||
+    hostname === 'localhost' ||
+    blockedSuffixes.some((suffix) => hostname.endsWith(suffix))
+  ) {
+    throw new ExtractionRequestError('Private and local network addresses are not supported', 400);
+  }
+
+  const defaultPort = url.protocol === 'https:' ? '443' : '80';
+  if (url.port && url.port !== defaultPort) {
+    throw new ExtractionRequestError('Only standard HTTP and HTTPS ports are supported', 400);
+  }
+
+  let addresses: Array<{ address: string }>;
+  try {
+    addresses = await lookup(hostname, { all: true, verbatim: true });
+  } catch {
+    throw new ExtractionRequestError('The remote host could not be resolved', 400);
+  }
+
+  if (
+    addresses.length === 0 ||
+    addresses.some(({ address }) => ipaddr.process(address).range() !== 'unicast')
+  ) {
+    throw new ExtractionRequestError('Private and reserved network addresses are not supported', 400);
+  }
+
+  return url;
+}
+
+async function readLimitedText(response: Response): Promise<string> {
+  const declaredLength = Number(response.headers.get('content-length') ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_PAGE_BYTES) {
+    throw new ExtractionRequestError('The remote page is larger than 2 MB', 413);
+  }
+  if (!response.body) {
+    throw new ExtractionRequestError('The remote page returned no content', 502);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let totalBytes = 0;
+  let text = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_PAGE_BYTES) {
+      await reader.cancel();
+      throw new ExtractionRequestError('The remote page is larger than 2 MB', 413);
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+
+  return text + decoder.decode();
+}
+
+async function extractFromHtml(html: string, url?: string, options: ExtractionOptions = {}): Promise<ExtractedContent> {
   // Use Cheerio for metadata and fallback extraction
   const $ = cheerio.load(html);
   
   // Extract metadata first
-  const metadata = extractMetadata($, url);
+  const metadata = extractMetadata($);
   
   // Try multiple extraction methods
-  let article: { title?: string; content?: string; textContent?: string; byline?: string } | null = null;
+  let article: {
+    title?: string | null;
+    content?: string | null;
+    textContent?: string | null;
+    byline?: string | null;
+  } | null = null;
   let extractedContent = '';
   let extractedText = '';
   
@@ -316,8 +475,8 @@ function extractSiteName(url?: string): string | undefined {
   }
 }
 
-function extractMetadata($: cheerio.CheerioAPI, _url?: string) {
-  const metadata: Record<string, unknown> = {};
+function extractMetadata($: cheerio.CheerioAPI): PageMetadata {
+  const metadata: PageMetadata = {};
 
   // OpenGraph and Twitter Card metadata
   metadata.title = 
@@ -367,7 +526,7 @@ function extractMetadata($: cheerio.CheerioAPI, _url?: string) {
         metadata.author = metadata.author || jsonLd.author?.name;
         metadata.publishedDate = metadata.publishedDate || (jsonLd.datePublished ? new Date(jsonLd.datePublished).toISOString() : undefined);
       }
-    } catch (e) {
+    } catch {
       // Ignore JSON parsing errors
     }
   });
@@ -375,12 +534,43 @@ function extractMetadata($: cheerio.CheerioAPI, _url?: string) {
   return metadata;
 }
 
-function processContent(content: string, options: Record<string, unknown>): string {
-  let processed = content;
+function processContent(content: string, options: ExtractionOptions): string {
+  const sanitizeOptions: sanitizeHtml.IOptions = {
+    allowedTags: [
+      ...sanitizeHtml.defaults.allowedTags,
+      'img',
+      'figure',
+      'figcaption',
+    ],
+    allowedAttributes: {
+      a: ['href', 'name', 'target', 'rel'],
+      img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+    allowProtocolRelative: false,
+    transformTags: {
+      a: (_tagName, attributes) => ({
+        tagName: 'a',
+        attribs: {
+          ...attributes,
+          rel: 'noopener noreferrer',
+        },
+      }),
+    },
+  };
+
+  let processed = sanitizeHtml(content, sanitizeOptions);
 
   // Limit content length if specified
-  if (options.maxContentLength && processed.length > options.maxContentLength) {
-    processed = processed.substring(0, options.maxContentLength) + '...';
+  if (
+    typeof options.maxContentLength === 'number' &&
+    options.maxContentLength > 0 &&
+    processed.length > options.maxContentLength
+  ) {
+    processed = `${sanitizeHtml(
+      processed.substring(0, options.maxContentLength),
+      sanitizeOptions,
+    )}...`;
   }
 
   // Clean up extra whitespace
@@ -404,7 +594,7 @@ function extractImages($: cheerio.CheerioAPI, baseUrl?: string): string[] {
         const absoluteUrl = baseUrl ? new URL(src, baseUrl).href : src;
         images.push(absoluteUrl);
         seenUrls.add(src);
-      } catch (e) {
+      } catch {
         // Skip invalid URLs
       }
     }
@@ -426,7 +616,7 @@ function extractLinks($: cheerio.CheerioAPI, baseUrl?: string): Array<{ url: str
         const absoluteUrl = baseUrl ? new URL(href, baseUrl).href : href;
         links.push({ url: absoluteUrl, text });
         seenUrls.add(href);
-      } catch (e) {
+      } catch {
         // Skip invalid URLs
       }
     }
@@ -435,7 +625,7 @@ function extractLinks($: cheerio.CheerioAPI, baseUrl?: string): Array<{ url: str
   return links.slice(0, 20); // Limit to 20 links
 }
 
-function generateTags(content: string, metadata: Record<string, unknown>): string[] {
+function generateTags(content: string, metadata: PageMetadata): string[] {
   const tags: string[] = [];
   const text = content.toLowerCase();
 

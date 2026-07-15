@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSettingsStore } from "@/stores/settings";
+import { startSettingsPersistence, useSettingsStore } from "@/stores/settings";
 
 interface ThemeProviderProps {
   children: React.ReactNode;
@@ -12,7 +12,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const darkMode = useSettingsStore(state => state.darkMode);
 
   useEffect(() => {
+    const stopPersistence = startSettingsPersistence();
     setMounted(true);
+    return stopPersistence;
   }, []);
 
   useEffect(() => {

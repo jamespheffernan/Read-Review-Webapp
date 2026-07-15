@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuickCapture } from "@/hooks/useItems";
 
@@ -10,11 +10,7 @@ export default function ShareTargetPage() {
   const router = useRouter();
   const { captureUrl, captureText } = useQuickCapture();
 
-  useEffect(() => {
-    handleSharedContent();
-  }, []);
-
-  const handleSharedContent = async () => {
+  const handleSharedContent = useCallback(async () => {
     try {
       setIsProcessing(true);
 
@@ -25,7 +21,6 @@ export default function ShareTargetPage() {
       const sharedText = urlParams.get('text');
 
       // Handle POST data (from Web Share Target API)
-      let formData: FormData | null = null;
       if (window.location.hash === '#shared') {
         // This would be set by the service worker for POST requests
         const sharedDataStr = sessionStorage.getItem('shared-data');
@@ -62,7 +57,11 @@ export default function ShareTargetPage() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [captureText, captureUrl, router]);
+
+  useEffect(() => {
+    void handleSharedContent();
+  }, [handleSharedContent]);
 
   if (error) {
     return (

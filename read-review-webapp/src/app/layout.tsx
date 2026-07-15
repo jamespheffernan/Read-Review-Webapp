@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -18,16 +18,18 @@ export const metadata: Metadata = {
   title: "Read/Review - Smart Reading & Triage Tool",
   description: "Zero-friction capture and triage tool for articles, PDFs, and notes with intelligent content processing.",
   manifest: "/manifest.json",
-  themeColor: "#5e5ce6",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Read/Review",
   },
   icons: {
-    icon: "/icons/icon-192x192.png",
-    apple: "/icons/icon-180x180.png",
+    icon: "/icons/icon-192x192.svg",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#5e5ce6",
 };
 
 export default function RootLayout({
